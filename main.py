@@ -1,9 +1,10 @@
 import time
+import warnings
 
 from bs4 import BeautifulSoup
 
-read_from = open("a.txt", "r", encoding="utf-8")
-# read_from = open("LEXICO_US.txt", "r", encoding="utf-8")
+# read_from = open("a.txt", "r", encoding="utf-8")
+read_from = open("LEXICO_US.txt", "r", encoding="utf-8")
 write_to = open("w.txt", "w", encoding="utf-8")
 
 
@@ -31,20 +32,35 @@ def check_dom_for_parse(word, st):
         raise RuntimeError(word + " should have at least one entry head.")
 
     if entry_heads[0].div.div.em.string is None:
-        raise RuntimeError(word , " has no name in entry head.")
+        raise RuntimeError(word, " has no name in entry head.")
+
+    i = 0
     for entry in entry_heads:
-        validate_entry(word, entry)
+        i += 1
+        validate_entry(word, entry, i)
 
 
-def validate_entry(word, entry):
+def validate_entry(word, entry, i):
     sections = []
     ns = entry.next_sibling
     while ns.name == 'section':
         sections.append(ns)
         ns = ns.next_sibling
+
     grambs = list(filter(lambda item: 'gramb' in item['class'], sections))
     if len(grambs) == 0:
-        raise RuntimeError(word + " should have gramb.")
+        raise RuntimeError(f"{word} {i} should have gramb.")
+    for gramb in grambs:
+        validate_gramb(word, gramb, i)
+
+
+def validate_gramb(word, gramb, i):
+    if gramb.h3.span is None:
+        raise RuntimeError(f"{word} {i} should have part of speech.")
+    if gramb.ul is None:
+        empty_sense = gramb.find('div', class_='empty_sense')
+        if empty_sense.div is None and empty_sense.p is None:
+            warnings.warn(f"{word} {i} have no crossReference or derivative_of property.")
 
 
 def check_if_file_is_good():
@@ -65,5 +81,4 @@ if __name__ == '__main__':
     start = time.time()
     check_if_file_is_good()
     end = time.time()
-    print("secs ", end - start, "s")
-    print("mins ", (end - start) / 60.0, "m")
+    print("Validation is complete. Let's go parsing.")
