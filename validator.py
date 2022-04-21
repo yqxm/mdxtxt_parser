@@ -57,10 +57,34 @@ def validate_entry(word, entry, i):
 def validate_gramb(word, gramb, i):
     if gramb.h3.span is None:
         raise RuntimeError(f"{word} {i} should have part of speech.")
-    if gramb.ul is None:
-        empty_sense = gramb.find('div', class_='empty_sense')
-        if empty_sense.div is None and empty_sense.p is None:
-            warnings.warn(f"{word} {i} have no crossReference or derivative_of property.")
+    hul_part = gramb.find('ul', class_='semb')
+    es_part = gramb.find('div', class_='empty_sense')
+
+    if es_part is None and hul_part is None:
+        print(f"{word} {i} has no semb and empty_sense part")
+        return
+    elif es_part is not None and hul_part is not None:
+        print(f"{word} {i} has both semb and empty_sense part.")
+        return
+
+    if hul_part is not None:
+        i = 0
+        # validate_semb(word, hul_part, i)
+    else:
+        validate_empty_sense(word, es_part, i)
+
+
+def validate_semb(word, hul, i):
+    main_defi = hul.li.div.p.find('span', class_='ind')
+    if main_defi is None:
+        cross_ref = hul.li.div.find('div', class_='crossReference')
+        if cross_ref is None:
+            print(f"{word} {i} entry has no main def and cross reference.")
+
+
+def validate_empty_sense(word, es, i):
+    if es.find('div', class_="crossReference") is None and es.find('p', class_='derivative_of') is None:
+        print(f"{word} {i} entry empty sense has no cross reference or derivative_of.")
 
 
 def check_if_file_is_good():
@@ -71,7 +95,7 @@ def check_if_file_is_good():
         if word == "":
             break
 
-        write_to.write(word + "\n")
+        # write_to.write(word + "\n")
         check_dom_for_parse(word, styled_content)
         check_end_tag(end_tag)
         # break
@@ -82,3 +106,5 @@ if __name__ == '__main__':
     check_if_file_is_good()
     end = time.time()
     print("Validation is complete. Let's go parsing.")
+    print(f"secs {end-start}s")
+    print(f"mins {(end-start)/60.0}m")
