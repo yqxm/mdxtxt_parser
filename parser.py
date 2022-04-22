@@ -111,7 +111,7 @@ def parse_trgs(trg, depth):
         trg_content += f'{INDENT * depth}{DEF_PREFIX}{defi.get_text()}\n'
     sub_senses = trg.find('ol', class_=SUB_SENSES)
     if sub_senses is not None:
-        print(f'{CURR_WORD} has sub senses')
+        # print(f'{CURR_WORD} has sub senses')
         trg_content += parse_sub_senses(sub_senses, depth + 1)
     return trg_content
 
