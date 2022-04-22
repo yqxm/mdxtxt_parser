@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 # read_from = open("a.txt", "r", encoding="utf-8")
 read_from = open("LEXICO_US.txt", "r", encoding="utf-8")
-write_to = open("result.txt", "w", encoding="utf-8")
+write_to = open("lexi.txt", "w", encoding="utf-8")
 
 OELD_BODY = 'OELDBody'
 ENTRY_WRAPPER = 'entryWrapper'
@@ -19,6 +19,10 @@ Sub_Sense = 'subSense'
 CURR_WORD = ''
 CURR_ENTRY = 0
 
+
+INDENT = '  '
+DEF_PREFIX = '* '
+SUB_DEF_PREFIX = '- '
 
 def parse_styled_content(st):
     soup = BeautifulSoup(st, 'html.parser')
@@ -60,7 +64,7 @@ def parse_entry_head(entry):
     return entry_content
 
 
-INDENT = '\t'
+
 
 
 def parse_gramb(gramb, depth):
@@ -87,7 +91,7 @@ def parse_semb(semb, depth):
     semb_content = ''
     if main_defi is None:
         cross_ref = semb.li.div.find('div', class_=CROSS_REFERENCE)
-        return f'{INDENT * depth}·{cross_ref.get_text()}\n'
+        return f'{INDENT * depth}{DEF_PREFIX}{cross_ref.get_text()}\n'
     else:
         trgs = map(lambda li: li.div, semb.contents)
         for trg in trgs:
@@ -102,9 +106,9 @@ def parse_trgs(trg, depth):
         cross_ref = trg.find('div', class_=CROSS_REFERENCE)
         if cross_ref is None:
             return ''
-        trg_content += f'{INDENT * depth}·{cross_ref.get_text()}\n'
+        trg_content += f'{INDENT * depth}{DEF_PREFIX}{cross_ref.get_text()}\n'
     else:
-        trg_content += f'{INDENT * depth}·{defi.get_text()}\n'
+        trg_content += f'{INDENT * depth}{DEF_PREFIX}{defi.get_text()}\n'
     sub_senses = trg.find('ol', class_=SUB_SENSES)
     if sub_senses is not None:
         print(f'{CURR_WORD} has sub senses')
@@ -118,10 +122,10 @@ def parse_sub_senses(sub_senses, depth):
     for sub in ss_list:
         sub_def = sub.find('span', class_='ind')
         if sub_def is not None:
-            return f'{INDENT * depth}-{sub_def.get_text()}\n'
+            return f'{INDENT * depth}{SUB_DEF_PREFIX}{sub_def.get_text()}\n'
         else:
             sub_cross = sub.find('div', class_='trg').div
-            return f'{INDENT * depth}-{sub_cross.get_text()}\n'
+            return f'{INDENT * depth}{SUB_DEF_PREFIX}{sub_cross.get_text()}\n'
 
 
 def parse_empty_sense(es, depth):
@@ -129,11 +133,11 @@ def parse_empty_sense(es, depth):
     #     return ''
     cross_ref = es.find('div', class_=CROSS_REFERENCE)
     if cross_ref is not None:
-        return f'{INDENT * depth}·{cross_ref.get_text()}\n'
+        return f'{INDENT * depth}{DEF_PREFIX}{cross_ref.get_text()}\n'
 
     derivative_of = es.find('p', class_=DERIVATIVE_OF)
     if derivative_of is not None:
-        return f'{INDENT * depth}·{derivative_of.get_text()}\n'
+        return f'{INDENT * depth}{DEF_PREFIX}{derivative_of.get_text()}\n'
     return ''
 
 
