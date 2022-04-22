@@ -13,6 +13,8 @@ SEMB = 'semb'
 EMPTY_SENSE = 'empty_sense'
 CROSS_REFERENCE = 'crossReference'
 DERIVATIVE_OF = 'derivative_of'
+SUB_SENSES = 'subSenses'
+Sub_Sense = 'subSense'
 
 CURR_WORD = ''
 CURR_ENTRY = 0
@@ -32,13 +34,20 @@ def parse_styled_content(st):
     CURR_WORD = word
     CURR_ENTRY = 0
 
+    content = ''
     for entry in entry_heads:
         CURR_ENTRY += 1
-        parse_entry_head(entry)
+        entry_content = parse_entry_head(entry)
+        content += entry_content
+    if content == '':
+        # print(f'{word} has no content')
+        content = '\n'
+    write_to.write(content)
 
 
 def parse_entry_head(entry):
     sections = []
+    entry_content = ''
     ns = entry.next_sibling
     while ns.name == 'section':
         sections.append(ns)
@@ -47,7 +56,8 @@ def parse_entry_head(entry):
     depth = 1
     grambs = list(filter(lambda item: 'gramb' in item['class'], sections))
     for gramb in grambs:
-        parse_gramb(gramb, depth)
+        entry_content += parse_gramb(gramb, depth)
+    return entry_content
 
 
 INDENT = '\t'
@@ -55,52 +65,76 @@ INDENT = '\t'
 
 def parse_gramb(gramb, depth):
     pos = gramb.h3.span.string
-    write_to.write(f"{INDENT * depth}{pos}\n")
+    pos_content = f"{INDENT * depth}{pos}\n"
 
     semb_part = gramb.find('ul', class_=SEMB)
     es_part = gramb.find('div', class_=EMPTY_SENSE)
 
     if semb_part is not None:
-        parse_semb(semb_part, depth + 1)
+        semb_content = parse_semb(semb_part, depth + 1)
+        if semb_content == '':
+            return ''
+        return pos_content + semb_content
     else:
-        parse_empty_sense(es_part, depth + 1)
+        es_content = parse_empty_sense(es_part, depth + 1)
+        if es_content == '':
+            return ''
+        return pos_content + es_content
 
 
 def parse_semb(semb, depth):
     main_defi = semb.li.div.p.find('span', class_='ind')
+    semb_content = ''
     if main_defi is None:
-        cross_ref = semb.li.div.find('div', class_='crossReference')
-        write_to.write(f'{INDENT * depth}{cross_ref.get_text()}\n')
+        cross_ref = semb.li.div.find('div', class_=CROSS_REFERENCE)
+        return f'{INDENT * depth}·{cross_ref.get_text()}\n'
     else:
         trgs = map(lambda li: li.div, semb.contents)
         for trg in trgs:
-            parse_trgs(trg, depth)
+            semb_content += parse_trgs(trg, depth)
+        return semb_content
 
 
 def parse_trgs(trg, depth):
     defi = trg.p.find('span', class_='ind')
+    trg_content = ''
     if defi is None:
         cross_ref = trg.find('div', class_=CROSS_REFERENCE)
         if cross_ref is None:
-            print(f'{CURR_WORD} {CURR_ENTRY} trg has no cross ref')
-            return
-        write_to.write(f'{INDENT * depth}{cross_ref.get_text()}\n')
+            return ''
+        trg_content += f'{INDENT * depth}·{cross_ref.get_text()}\n'
     else:
-        write_to.write(f'{INDENT * depth}{defi.get_text()}\n')
+        trg_content += f'{INDENT * depth}·{defi.get_text()}\n'
+    sub_senses = trg.find('ol', class_=SUB_SENSES)
+    if sub_senses is not None:
+        print(f'{CURR_WORD} has sub senses')
+        trg_content += parse_sub_senses(sub_senses, depth + 1)
+    return trg_content
+
+
+def parse_sub_senses(sub_senses, depth):
+    ss_list = sub_senses.find_all('li', class_=Sub_Sense)
+
+    for sub in ss_list:
+        sub_def = sub.find('span', class_='ind')
+        if sub_def is not None:
+            return f'{INDENT * depth}-{sub_def.get_text()}\n'
+        else:
+            sub_cross = sub.find('div', class_='trg').div
+            return f'{INDENT * depth}-{sub_cross.get_text()}\n'
 
 
 def parse_empty_sense(es, depth):
-    if es.contents is None or len(es.contents) == 0:
-        print(f"{CURR_WORD} {CURR_ENTRY} empty sense part is blank")
-
+    # if es.contents is None or len(es.contents) == 0:
+    #     return ''
     cross_ref = es.find('div', class_=CROSS_REFERENCE)
     if cross_ref is not None:
-        write_to.write(f'{INDENT * depth}{cross_ref.get_text()}\n')
-        return
+        return f'{INDENT * depth}·{cross_ref.get_text()}\n'
 
     derivative_of = es.find('p', class_=DERIVATIVE_OF)
     if derivative_of is not None:
-        write_to.write(f'{INDENT * depth}{derivative_of.get_text()}\n')
+        return f'{INDENT * depth}·{derivative_of.get_text()}\n'
+    return ''
 
 
 def parse():
