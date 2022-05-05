@@ -1,10 +1,12 @@
 import time
+import json
 
 from bs4 import BeautifulSoup
 
 # read_from = open("a.txt", "r", encoding="utf-8")
 read_from = open("LEXICO_US.txt", "r", encoding="utf-8")
-write_to = open("lexi.txt", "w", encoding="utf-8")
+write_to = open("lexi_test.txt", "w", encoding="utf-8")
+json_write = open("json.txt", "w", encoding="utf-8")
 
 OELD_BODY = 'OELDBody'
 ENTRY_WRAPPER = 'entryWrapper'
@@ -19,10 +21,33 @@ Sub_Sense = 'subSense'
 CURR_WORD = ''
 CURR_ENTRY = 0
 
-
 INDENT = '  '
 DEF_PREFIX = '* '
 SUB_DEF_PREFIX = '- '
+
+
+class OTJ:
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__)
+
+
+class Word(OTJ):
+    def __init__(self):
+        self.text = ''
+        self.entries = []
+
+
+class Entry(OTJ):
+    def __init__(self):
+        self.pos = ''
+        self.defs = []
+
+
+class Def(OTJ):
+    def __init__(self):
+        self.definition = ''
+        self.sub_defs = []
+
 
 def parse_styled_content(st):
     soup = BeautifulSoup(st, 'html.parser')
@@ -33,6 +58,10 @@ def parse_styled_content(st):
     word = entry_heads[0].div.div.em.string
     write_to.write(f'{word}\n')
 
+    w = Word()
+    w.text = word
+    w.entries = []
+
     global CURR_WORD
     global CURR_ENTRY
     CURR_WORD = word
@@ -42,11 +71,33 @@ def parse_styled_content(st):
     for entry in entry_heads:
         CURR_ENTRY += 1
         entry_content = parse_entry_head(entry)
+        w.entries.append(reparse_entry_content(entry_content))
         content += entry_content
     if content == '':
         # print(f'{word} has no content')
         content = '\n'
     write_to.write(content)
+    print(w.toJSON())
+
+
+def reparse_entry_content(entry_content):
+    entry = Entry()
+    content_list = entry_content.split('\n')
+
+    entry.pos = content_list[0].strip()
+    k = 1
+    length = len(content_list)
+    while k < length:
+        if content_list[k].startswith(f'{INDENT * 2}{DEF_PREFIX}'):
+            defi = Def()
+            defi.definition = content_list[k].strip()
+            lk = k + 1
+            while lk < length and content_list[lk].startswith(f'{INDENT * 3}{SUB_DEF_PREFIX}'):
+                defi.sub_defs.append(content_list[lk].strip())
+                lk += 1
+            entry.defs.append(defi)
+        k += 1
+    return entry
 
 
 def parse_entry_head(entry):
@@ -62,9 +113,6 @@ def parse_entry_head(entry):
     for gramb in grambs:
         entry_content += parse_gramb(gramb, depth)
     return entry_content
-
-
-
 
 
 def parse_gramb(gramb, depth):
@@ -89,14 +137,14 @@ def parse_gramb(gramb, depth):
 def parse_semb(semb, depth):
     main_defi = semb.li.div.p.find('span', class_='ind')
     semb_content = ''
-    if main_defi is None:
-        cross_ref = semb.li.div.find('div', class_=CROSS_REFERENCE)
-        return f'{INDENT * depth}{DEF_PREFIX}{cross_ref.get_text()}\n'
-    else:
-        trgs = map(lambda li: li.div, semb.contents)
-        for trg in trgs:
-            semb_content += parse_trgs(trg, depth)
-        return semb_content
+    # if main_defi is None:
+    #     cross_ref = semb.li.div.find('div', class_=CROSS_REFERENCE)
+    #     return f'{INDENT * depth}{DEF_PREFIX}{cross_ref.get_text()}\n'
+    # else:
+    trgs = map(lambda li: li.div, semb.contents)
+    for trg in trgs:
+        semb_content += parse_trgs(trg, depth)
+    return semb_content
 
 
 def parse_trgs(trg, depth):
