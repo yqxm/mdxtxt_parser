@@ -1,11 +1,16 @@
 import time
 import json
+import pymysql
 
 from bs4 import BeautifulSoup
+from pymysql import MySQLError
+
+db = pymysql.connect(host='localhost', user='root', password='123456', database='word_dictionary')
+cursor = db.cursor()
 
 # read_from = open("a.txt", "r", encoding="utf-8")
 read_from = open("LEXICO_US.txt", "r", encoding="utf-8")
-write_to = open("lexi_test.txt", "w", encoding="utf-8")
+doc_write = open("lexi.txt", "w", encoding="utf-8")
 json_write = open("json.txt", "w", encoding="utf-8")
 
 OELD_BODY = 'OELDBody'
@@ -56,7 +61,7 @@ def parse_styled_content(st):
     entry_heads = entry_wrapper.find_all('div', class_=ENTRY_HEAD)
 
     word = entry_heads[0].div.div.em.string
-    write_to.write(f'{word}\n')
+    doc_write.write(f'{word}\n')
 
     w = Word()
     w.text = word
@@ -76,8 +81,22 @@ def parse_styled_content(st):
     if content == '':
         # print(f'{word} has no content')
         content = '\n'
-    write_to.write(content)
-    print(w.toJSON())
+    doc_write.write(content)
+    json_write.write(f"{w.toJSON()}\n")
+    insert_to_db(w)
+
+
+TABLE_NAME = 'lexico'
+
+
+def insert_to_db(w):
+    sql = 'INSERT INTO lexico (text, json_text, create_time, update_time) VALUES (%s, %s, now(), now())'
+    try:
+        cursor.execute(sql, (w.text, w.toJSON()))
+        db.commit()
+    except MySQLError as e:
+        print('error {!r}, errno is {}, word {}'.format(e, e.args[0], w.text))
+        db.rollback()
 
 
 def reparse_entry_content(entry_content):
@@ -189,8 +208,21 @@ def parse_empty_sense(es, depth):
     return ''
 
 
+def db_init():
+    cursor.execute("DROP TABLE IF EXISTS lexico;")
+    create_table = """CREATE TABLE lexico(
+                        id BIGINT primary key auto_increment,
+                        text VARCHAR(128) not null,
+                        json_text VARCHAR(4096) not null ,
+                        create_time timestamp not null ,
+                        update_time timestamp not null
+                    );"""
+    cursor.execute(create_table)
+
+
 def parse():
     print("start parsing...")
+    db_init()
     while True:
         word_head = read_from.readline().strip()
         styled_content = read_from.readline().strip()
@@ -198,6 +230,7 @@ def parse():
         if word_head == "":
             break
         parse_styled_content(styled_content)
+    db.close()
 
 
 if __name__ == '__main__':
