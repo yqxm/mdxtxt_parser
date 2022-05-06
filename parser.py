@@ -8,7 +8,7 @@ from pymysql import MySQLError
 db = pymysql.connect(host='localhost', user='root', password='123456', database='word_dictionary')
 cursor = db.cursor()
 
-# read_from = open("a.txt", "r", encoding="utf-8")
+# read_from = open("part_of_dict.txt", "r", encoding="utf-8")
 read_from = open("LEXICO_US.txt", "r", encoding="utf-8")
 doc_write = open("lexi.txt", "w", encoding="utf-8")
 json_write = open("json.txt", "w", encoding="utf-8")
