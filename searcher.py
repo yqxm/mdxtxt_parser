@@ -3,7 +3,7 @@
 import re
 import sys
 
-read_from = open('lexi.txt', 'r', encoding='utf-8')
+read_from = open('/home/huhu/Desktop/proj/pycharm/mdxtxt_parser/lexi.txt', 'r', encoding='utf-8')
 
 tt = read_from.read()
 read_from.close()
