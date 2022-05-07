@@ -109,10 +109,10 @@ def reparse_entry_content(entry_content):
     while k < length:
         if content_list[k].startswith(f'{INDENT * 2}{DEF_PREFIX}'):
             defi = Def()
-            defi.definition = content_list[k].strip()
+            defi.definition = content_list[k].replace(f'{INDENT * 2}{DEF_PREFIX}', '').strip()
             lk = k + 1
             while lk < length and content_list[lk].startswith(f'{INDENT * 3}{SUB_DEF_PREFIX}'):
-                defi.sub_defs.append(content_list[lk].strip())
+                defi.sub_defs.append(content_list[lk].replace(f'{INDENT * 3}{SUB_DEF_PREFIX}', '').strip())
                 lk += 1
             entry.defs.append(defi)
         k += 1
